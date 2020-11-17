@@ -24,9 +24,6 @@ pipeline_id = 3662985
 celery = Celery(application.name, broker='redis://localhost:6379/0')
 celery.conf.update(application.config)
 
-with open('access_token.txt', 'r') as file:
-    amo_token = file.read()
-
 
 def ph_fix(input_ph: str) -> str:
     if len(input_ph) == 12 and input_ph.startswith('+') and input_ph[1:].isdigit():
@@ -40,6 +37,9 @@ def ph_fix(input_ph: str) -> str:
 
 @celery.task
 def amo_worker(data):
+    with open('access_token.txt', 'r') as file:
+        amo_token = file.read()
+    
     headers = {'Authorization': f'Bearer {amo_token}'}
     
     deal = {
