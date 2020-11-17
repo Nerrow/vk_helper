@@ -27,8 +27,6 @@ celery.conf.update(application.config)
 with open('access_token.txt', 'r') as file:
     amo_token = file.read()
 
-headers = {'Authorization': f'Bearer {amo_token}'}
-
 
 def ph_fix(input_ph: str) -> str:
     if len(input_ph) == 12 and input_ph.startswith('+') and input_ph[1:].isdigit():
@@ -42,6 +40,8 @@ def ph_fix(input_ph: str) -> str:
 
 @celery.task
 def amo_worker(data):
+    headers = {'Authorization': f'Bearer {amo_token}'}
+    
     deal = {
         "form_name": data['object']['form_name'],
         "user_id": data['object']['user_id'],
