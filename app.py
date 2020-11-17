@@ -1,15 +1,16 @@
-from flask import Flask, request
+from flask import Flask, request, make_response
 from pymongo import MongoClient
 
 from bs4 import BeautifulSoup
 from datetime import date
+from celery import Celery
 import requests as rq
 import json
 import lxml
 
 application = Flask(__name__)
 
-cluster = MongoClient('environ.get('MONGO_PW')')
+cluster = MongoClient('mongo.pw')
 db = cluster['ReportStat']
 collection = db['reports']
 
@@ -19,6 +20,14 @@ url_amo_create_contacts = f"https://{subdomen}.amocrm.ru/api/v4/contacts"
 url_amo_create_leads = f"https://{subdomen}.amocrm.ru/api/v4/leads"
 
 pipeline_id = 3662985
+
+celery = Celery(application.name, broker='redis://localhost:6379/0')
+celery.conf.update(application.config)
+
+with open('access_token.txt', 'r') as file:
+    amo_token = file.read()
+
+headers = {'Authorization': f'Bearer {amo_token}'}
 
 
 def ph_fix(input_ph: str) -> str:
@@ -31,10 +40,7 @@ def ph_fix(input_ph: str) -> str:
         return ''.join(output_ph)
 
 
-with open('access_token.txt', 'r') as file:
-    amo_token = file.read()
-
-
+@celery.task
 def amo_worker(data):
     deal = {
         "form_name": data['object']['form_name'],
@@ -50,33 +56,17 @@ def amo_worker(data):
     print(add_to_db)
 
     """ ДОБАВЛЕНИЕ СДЕЛКИ """
+    print(deal['alreadyBeen'])
     params_amo_post_lead = [
         {
             "name": deal['form_name'],
             "pipeline_id": pipeline_id,
             "custom_fields_values": [
                 {
-                    "field_id": 621325,
+                    "field_id": 692252,
                     "values": [
                         {
-                            "value": deal['city'],
-                            "enum_code": "city",
-                        }
-                    ]
-                },
-                {
-                    "field_id": 528795,
-                    "values": [
-                        {
-                            "value": deal['phone']
-                        }
-                    ]
-                },
-                {
-                    "field_id": 528793,
-                    "values": [
-                        {
-                            "value": deal['name']
+                            "value": deal['alreadyBeen'],
                         }
                     ]
                 }
@@ -92,21 +82,20 @@ def amo_worker(data):
 
     add_leads = rq.post(url_amo_create_leads,
                         data=json.dumps(params_amo_post_lead),
-                        headers={'Authorization': f'Bearer {amo_token}'})
+                        headers=headers)
     add_leads_response = add_leads.json()
-    print(add_leads_response)
 
     get_contacts = rq.get(f"https://{subdomen}.amocrm.ru/private/api/contact_search.php?SEARCH={ph_fix(deal['phone'])}",
-                          headers={'Authorization': f'Bearer {amo_token}'})
+                          headers=headers)
 
     soup = BeautifulSoup(get_contacts.content, 'lxml')
-    print(soup.contacts.contact.id.text)
 
     try:
         if soup.find('contacts/contact/id').text != 0:
             print(soup.find('contacts/contact/id').text)
 
     except AttributeError:
+
         params_amo_post_contact = [{
             "first_name": deal['name'],
             "custom_fields_values": [
@@ -134,14 +123,14 @@ def amo_worker(data):
         """ ДОБАВЛЕНИЕ КОНТАКТА """
         add_contact = rq.post(url_amo_create_contacts,
                               data=json.dumps(params_amo_post_contact),
-                              headers={'Authorization': f'Bearer {amo_token}'})
+                              headers=headers)
         print(add_contact.json())
 
     finally:
         """ ПРОВЕРКА НА СУЩЕСТВОВАНИЕ """
         get_contacts2 = rq.get(
             f"https://{subdomen}.amocrm.ru/private/api/contact_search.php?SEARCH={ph_fix(deal['phone'])}",
-            headers={'Authorization': f'Bearer {amo_token}'})
+            headers=headers)
         contact_id = BeautifulSoup(get_contacts2.content, 'lxml').contacts.contact.id.text
         print(contact_id)
 
@@ -159,7 +148,7 @@ def amo_worker(data):
 
         add_entity = rq.post(url_amo_add_entity,
                              data=json.dumps(params_amo_post_entity),
-                             headers={'Authorization': f'Bearer {amo_token}'})
+                             headers=headers)
         print(add_entity.json())
 
 
@@ -173,9 +162,10 @@ def processing():
     data = json.loads(request.data)
     print(data)
     if data['type'] == 'confirmation':
-        return "95ec0a72"
+        return "afd8f2a4"
     elif data['type'] == 'lead_forms_new':
-        amo_worker(data)
+        make_response('ok')
+        amo_worker.delay(data)
         return 'ok'
 
 
