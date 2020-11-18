@@ -12,7 +12,7 @@ application = Flask(__name__)
 
 cluster = MongoClient('mongo.pw')
 db = cluster['ReportStat']
-collection = db['reports']
+collection = db['podruge_normalized2']
 
 subdomen = "podruzhki"
 
