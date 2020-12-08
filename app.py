@@ -42,7 +42,7 @@ def amo_worker(data):
     
     headers = {'Authorization': f'Bearer {amo_token}'}
     
-        if data['object']['form_name'] == '':  # CHANGE
+    if data['object']['form_name'] == '':  # CHANGE
         deal = {
             "form_name": data['object']['form_name'],
             "user_id": data['object']['user_id'],
@@ -54,41 +54,41 @@ def amo_worker(data):
             "date": str(date.today()),
         }
 
-        add_to_db = db.reports.insert_one(deal).inserted_id
-        print(add_to_db)
+    add_to_db = db.reports.insert_one(deal).inserted_id
+    print(add_to_db)
 
-        """ ДОБАВЛЕНИЕ СДЕЛКИ """
-        print(deal['alreadyBeen'])
-        params_amo_post_lead = [
-            {
-                "name": deal['form_name'],
-                "pipeline_id": pipeline_id,
-                "custom_fields_values": [
-                    {
-                        "field_id": 692252,
-                        "values": [
-                            {
-                                "value": deal['alreadyBeen'],
-                            }
-                        ]
-                    },
-                    {
-                        "field_id": 688701,
-                        "values": [
-                            {
-                                "value": deal['sale'],
-                            }
-                        ]
-                    }
-                ],
-                "_embedded": {
-                    "tags": [
+    """ ДОБАВЛЕНИЕ СДЕЛКИ """
+    print(deal['alreadyBeen'])
+    params_amo_post_lead = [
+        {
+            "name": deal['form_name'],
+            "pipeline_id": pipeline_id,
+            "custom_fields_values": [
+                {
+                    "field_id": 692252,
+                    "values": [
                         {
-                            "name": "вк"
+                            "value": deal['alreadyBeen'],
+                        }
+                    ]
+                },
+                {
+                    "field_id": 688701,
+                    "values": [
+                        {
+                            "value": deal['sale'],
                         }
                     ]
                 }
-            }]
+            ],
+            "_embedded": {
+                "tags": [
+                    {
+                        "name": "вк"
+                    }
+                ]
+            }
+        }]
     else:
         deal = {
             "form_name": data['object']['form_name'],
