@@ -42,43 +42,89 @@ def amo_worker(data):
     
     headers = {'Authorization': f'Bearer {amo_token}'}
     
-    deal = {
-        "form_name": data['object']['form_name'],
-        "user_id": data['object']['user_id'],
-        "name": data['object']['answers'][0]['answer'],
-        "phone": data['object']['answers'][1]['answer'],
-        "city": data['object']['answers'][2]['answer'],
-        "alreadyBeen": data['object']['answers'][3]['answer'],
-        "date": str(date.today())
-    }
+        if data['object']['form_name'] == '':  # CHANGE
+        deal = {
+            "form_name": data['object']['form_name'],
+            "user_id": data['object']['user_id'],
+            "name": data['object']['answers'][0]['answer'],
+            "phone": data['object']['answers'][1]['answer'],
+            "city": data['object']['answers'][2]['answer'],
+            "alreadyBeen": data['object']['answers'][3]['answer'],
+            "sale": data['object']['answers'][6]['answer'],
+            "date": str(date.today()),
+        }
 
-    add_to_db = db.reports.insert_one(deal).inserted_id
-    print(add_to_db)
+        add_to_db = db.reports.insert_one(deal).inserted_id
+        print(add_to_db)
 
-    """ ДОБАВЛЕНИЕ СДЕЛКИ """
-    print(deal['alreadyBeen'])
-    params_amo_post_lead = [
-        {
-            "name": deal['form_name'],
-            "pipeline_id": pipeline_id,
-            "custom_fields_values": [
-                {
+        """ ДОБАВЛЕНИЕ СДЕЛКИ """
+        print(deal['alreadyBeen'])
+        params_amo_post_lead = [
+            {
+                "name": deal['form_name'],
+                "pipeline_id": pipeline_id,
+                "custom_fields_values": [
+                    {
+                        "field_id": 692252,
+                        "values": [
+                            {
+                                "value": deal['alreadyBeen'],
+                            }
+                        ]
+                    },
+                    {
+                        "field_id": 688701,
+                        "values": [
+                            {
+                                "value": deal['sale'],
+                            }
+                        ]
+                    }
+                ],
+                "_embedded": {
+                    "tags": [
+                        {
+                            "name": "вк"
+                        }
+                    ]
+                }
+            }]
+    else:
+        deal = {
+            "form_name": data['object']['form_name'],
+            "user_id": data['object']['user_id'],
+            "name": data['object']['answers'][0]['answer'],
+            "phone": data['object']['answers'][1]['answer'],
+            "city": data['object']['answers'][2]['answer'],
+            "alreadyBeen": data['object']['answers'][3]['answer'],
+            "date": str(date.today())
+        }
+
+        add_to_db = db.reports.insert_one(deal).inserted_id
+        print(add_to_db)
+
+        """ ДОБАВЛЕНИЕ СДЕЛКИ """
+        print(deal['alreadyBeen'])
+        params_amo_post_lead = [
+            {
+                "name": deal['form_name'],
+                "pipeline_id": pipeline_id,
+                "custom_fields_values": [{
                     "field_id": 692252,
                     "values": [
                         {
                             "value": deal['alreadyBeen'],
                         }
                     ]
+                }],
+                "_embedded": {
+                    "tags": [
+                        {
+                            "name": "вк"
+                        }
+                    ]
                 }
-            ],
-            "_embedded": {
-                "tags": [
-                    {
-                        "name": "вк"
-                    }
-                ]
-            }
-        }]
+            }]
 
     add_leads = rq.post(url_amo_create_leads,
                         data=json.dumps(params_amo_post_lead),
