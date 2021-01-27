@@ -19,7 +19,7 @@ subdomen = "podruzhki"
 url_amo_create_contacts = f"https://{subdomen}.amocrm.ru/api/v4/contacts"
 url_amo_create_leads = f"https://{subdomen}.amocrm.ru/api/v4/leads"
 
-pipeline_id = 3662985
+# pipeline_id = 3662985
 
 celery = Celery(application.name, broker='redis://localhost:6379/0')
 celery.conf.update(application.config)
@@ -35,6 +35,12 @@ def ph_fix(input_ph: str) -> str:
         return ''.join(output_ph)
 
 
+def check_id(form_name: str):
+    try:
+        return int(form_name[:4])
+    except:
+        return 3662985
+    
 @celery.task
 def amo_worker(data):
     with open('access_token.txt', 'r') as file:
@@ -62,7 +68,7 @@ def amo_worker(data):
     params_amo_post_lead = [
         {
             "name": deal['form_name'],
-            "pipeline_id": pipeline_id,
+            "pipeline_id": check_id(data['object']['form_name']),
             "custom_fields_values": [
                 {
                     "field_id": 692252,
@@ -108,7 +114,7 @@ def amo_worker(data):
         params_amo_post_lead = [
             {
                 "name": deal['form_name'],
-                "pipeline_id": pipeline_id,
+                "pipeline_id": check_id(data['object']['form_name']),
                 "custom_fields_values": [{
                     "field_id": 692252,
                     "values": [
